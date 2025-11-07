@@ -4,7 +4,8 @@ from pydantic import BaseModel
 import pickle
 import pandas as pd
 from typing import Dict
-from model_training import calculate_recent_form, calculate_goal_difference, calculate_h2h
+from model_training import calculate_base_features
+from data_collection import scrape_espn_recent_matches
 
 app = FastAPI(title="Football Match Predictor API")
 
@@ -51,17 +52,7 @@ class PredictionResponse(BaseModel):
 
 def calculate_features(home_team, away_team):
     """Calculate features for prediction"""
-    features = {
-        'home_form_5': calculate_recent_form(matches_df, home_team, 5, True),
-        'away_form_5': calculate_recent_form(matches_df, away_team, 5, False),
-        'home_form_10': calculate_recent_form(matches_df, home_team, 10, True),
-        'away_form_10': calculate_recent_form(matches_df, away_team, 10, False),
-        'home_gd': calculate_goal_difference(matches_df, home_team),
-        'away_gd': calculate_goal_difference(matches_df, away_team),
-        'h2h_home_advantage': calculate_h2h(matches_df, home_team, away_team),
-        'home_advantage': 1,
-    }
-    return features
+    return calculate_base_features(matches_df, home_team, away_team)
 
 @app.get("/")
 def root():
@@ -117,8 +108,129 @@ def get_stats():
     
     return {
         "total_matches": len(matches_df),
-        "seasons": matches_df['season'].unique().tolist(),
+        "seasons": sorted(matches_df['season'].unique().tolist()),
         "home_wins": int((matches_df['outcome'] == 2).sum()),
         "draws": int((matches_df['outcome'] == 1).sum()),
         "away_wins": int((matches_df['outcome'] == 0).sum()),
     }
+
+@app.get("/recent-matches/{team_name}")
+def get_recent_matches(team_name: str, limit: int = 5, use_espn: bool = True):
+    """Get recent matches for a team - tries ESPN first, falls back to local data"""
+    matches_list = []
+    
+    # Try ESPN scraping first for more recent data
+    if use_espn:
+        try:
+            espn_matches = scrape_espn_recent_matches(team_name, limit)
+            if espn_matches and len(espn_matches) > 0:
+                # Convert ESPN format to API format
+                for match in espn_matches[:limit]:
+                    matches_list.append({
+                        "date": match.get('date', ''),
+                        "opponent": match.get('opponent', 'Unknown'),
+                        "is_home": bool(match.get('is_home', False)),  # Explicitly boolean
+                        "team_goals": int(match.get('team_goals', 0)),
+                        "opponent_goals": int(match.get('opponent_goals', 0)),
+                        "result": match.get('result', 'D'),
+                    })
+                
+                if matches_list:
+                    return {"matches": matches_list}
+        except Exception as e:
+            print(f"⚠️ ESPN scraping failed, falling back to local data: {e}")
+    
+    # Fallback to local data if ESPN fails or is disabled
+    if matches_df is None:
+        raise HTTPException(status_code=500, detail="Data not loaded")
+    
+    # Clean team name for matching
+    team_name_clean = str(team_name).strip()
+    
+    # Find matches where team is home or away
+    def team_matches(row):
+        home = str(row['home_team']).strip() if pd.notna(row['home_team']) else ''
+        away = str(row['away_team']).strip() if pd.notna(row['away_team']) else ''
+        return home == team_name_clean or away == team_name_clean
+    
+    team_matches_df = matches_df[
+        matches_df.apply(team_matches, axis=1)
+    ].copy()
+    
+    # Filter out matches with missing critical data
+    team_matches_df = team_matches_df[
+        team_matches_df['home_goals'].notna() & 
+        team_matches_df['away_goals'].notna() &
+        team_matches_df['outcome'].notna() &
+        team_matches_df['date'].notna()
+    ]
+    
+    # Sort by date descending and get most recent
+    team_matches_df = team_matches_df.sort_values('date', ascending=False).head(limit)
+    
+    if len(team_matches_df) == 0:
+        return {"matches": []}
+    
+    for _, match in team_matches_df.iterrows():
+        # Clean team names
+        home_team = str(match['home_team']).strip() if pd.notna(match['home_team']) else ''
+        away_team = str(match['away_team']).strip() if pd.notna(match['away_team']) else ''
+        
+        # Determine if team was home or away - CRITICAL: exact match
+        is_home = (home_team == team_name_clean)
+        is_away = (away_team == team_name_clean)
+        
+        # Safety check
+        if not is_home and not is_away:
+            continue
+        
+        # Get opponent and goals
+        if is_home:
+            opponent = away_team
+            team_goals = int(match['home_goals']) if pd.notna(match['home_goals']) else 0
+            opponent_goals = int(match['away_goals']) if pd.notna(match['away_goals']) else 0
+        else:  # is_away
+            opponent = home_team
+            team_goals = int(match['away_goals']) if pd.notna(match['away_goals']) else 0
+            opponent_goals = int(match['home_goals']) if pd.notna(match['home_goals']) else 0
+        
+        # Determine result
+        outcome = match['outcome']
+        if pd.isna(outcome):
+            if team_goals > opponent_goals:
+                result = 'W'
+            elif team_goals < opponent_goals:
+                result = 'L'
+            else:
+                result = 'D'
+        elif is_home:
+            if outcome == 2:
+                result = 'W'
+            elif outcome == 0:
+                result = 'L'
+            else:
+                result = 'D'
+        else:  # is_away
+            if outcome == 0:
+                result = 'W'
+            elif outcome == 2:
+                result = 'L'
+            else:
+                result = 'D'
+        
+        # Format date
+        try:
+            date_str = match['date'].strftime('%Y-%m-%d') if pd.notna(match['date']) else ''
+        except:
+            date_str = str(match['date']) if pd.notna(match['date']) else ''
+        
+        matches_list.append({
+            "date": date_str,
+            "opponent": opponent,
+            "is_home": bool(is_home),  # CRITICAL: Explicit boolean conversion
+            "team_goals": team_goals,
+            "opponent_goals": opponent_goals,
+            "result": result,
+        })
+    
+    return {"matches": matches_list}

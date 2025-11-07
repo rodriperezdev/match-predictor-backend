@@ -5,10 +5,12 @@ Machine learning-based football match prediction system for the Argentine Primer
 ## Features
 
 - **Data Collection**: Automated collection of match data from API-Football
-- **Feature Engineering**: Calculates team form, goal differences, head-to-head records, and more
+- **Betting Odds Integration**: Collects odds from The Odds API for enhanced predictions
+- **Advanced Statistics**: Scrapes xG, possession, shots, and other advanced stats from FBref
+- **Feature Engineering**: Calculates team form, goal differences, head-to-head records, betting odds, and advanced stats
 - **Machine Learning**: Trains multiple models (Logistic Regression, Random Forest, Gradient Boosting, XGBoost) and selects the best performer
 - **RESTful API**: FastAPI-based API for making predictions
-- **Model Accuracy**: Achieves approximately 40-50% accuracy on test data (significantly better than random chance for a three-outcome prediction)
+- **Model Accuracy**: Achieves approximately 55-65% accuracy on test data with odds and advanced stats (vs 40-50% with basic features)
 
 ## Setup
 
@@ -32,10 +34,14 @@ Machine learning-based football match prediction system for the Argentine Primer
    ```
 
 4. **Set up environment variables**
-   Create a `.env` file in the root directory:
+   Create a `.env` file in the root directory (copy from `.env.example`):
    ```
-   FOOTBALL_API_KEY=your_api_key_here
+   FOOTBALL_API_KEY=your_api_football_key_here
+   ODDS_API_KEY=your_odds_api_key_here
    ```
+   
+   - Get your API-Football key from: https://www.api-football.com/
+   - Get your Odds API key from: https://the-odds-api.com/ (500 requests/month free)
 
 5. **Collect data** (optional, if you have API access)
    ```bash
@@ -59,6 +65,7 @@ The API will be available at `http://localhost:8003`
 - `GET /` - API status
 - `GET /teams` - Get list of all teams
 - `GET /stats` - Get dataset statistics
+- `GET /recent-matches/{team_name}?limit=5` - Get recent matches for a team
 - `POST /predict` - Make a prediction
   ```json
   {
