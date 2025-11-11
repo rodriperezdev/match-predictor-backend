@@ -75,7 +75,7 @@ def calculate_base_features(historical_df, home_team, away_team):
 def merge_odds_data(matches_df, odds_df):
     """Merge betting odds with match data"""
     if odds_df is None or len(odds_df) == 0:
-        print("⚠️ No odds data available")
+        print("[WARNING] No odds data available")
         return matches_df
     
     odds_df['date'] = pd.to_datetime(odds_df['date'])
@@ -92,7 +92,7 @@ def merge_odds_data(matches_df, odds_df):
 def merge_fbref_stats(matches_df, fbref_df):
     """Add FBref advanced stats to matches"""
     if fbref_df is None or len(fbref_df) == 0:
-        print("⚠️ No FBref data available")
+        print("[WARNING] No FBref data available")
         return matches_df
     
     # Create dict for quick lookup
@@ -187,8 +187,8 @@ def train_models(features_df):
     classes = np.unique(y_train)
     class_weights = compute_class_weight('balanced', classes=classes, y=y_train)
     class_weight_dict = dict(zip(classes, class_weights))
-    print(f"\n📊 Class distribution: {dict(y_train.value_counts().sort_index())}")
-    print(f"📊 Class weights: {class_weight_dict}")
+    print(f"\nClass distribution: {dict(y_train.value_counts().sort_index())}")
+    print(f"Class weights: {class_weight_dict}")
     
     # Scale
     scaler = StandardScaler()
@@ -208,7 +208,7 @@ def train_models(features_df):
     best_model = None
     best_name = None
     
-    print("\n🤖 Training models...")
+    print("\nTraining models...")
     for name, model in models.items():
         model.fit(X_train_scaled, y_train)
         y_pred = model.predict(X_test_scaled)
@@ -222,7 +222,7 @@ def train_models(features_df):
             best_model = model
             best_name = name
     
-    print(f"\n🏆 Best: {best_name} ({best_accuracy:.4f})")
+    print(f"\nBest: {best_name} ({best_accuracy:.4f})")
     
     # Save best model
     os.makedirs('models', exist_ok=True)
@@ -233,13 +233,13 @@ def train_models(features_df):
     with open('models/features.pkl', 'wb') as f:
         pickle.dump(X.columns.tolist(), f)
     
-    print("✓ Models saved to models/")
+    print("[OK] Models saved to models/")
     
     return best_model, scaler, X.columns.tolist(), results
 
 def train_pipeline():
     """Complete training pipeline"""
-    print("\n📊 Loading data...")
+    print("\nLoading data...")
     matches_df = pd.read_csv('data/matches.csv')
     matches_df['date'] = pd.to_datetime(matches_df['date'])
     
@@ -247,21 +247,21 @@ def train_pipeline():
     odds_df = None
     if os.path.exists('data/odds_history.csv'):
         odds_df = pd.read_csv('data/odds_history.csv')
-        print(f"✓ Loaded {len(odds_df)} odds records")
+        print(f"[OK] Loaded {len(odds_df)} odds records")
     
     fbref_df = None
     if os.path.exists('data/fbref_stats.csv'):
         fbref_df = pd.read_csv('data/fbref_stats.csv')
-        print(f"✓ Loaded stats for {len(fbref_df)} teams")
+        print(f"[OK] Loaded stats for {len(fbref_df)} teams")
     
-    print(f"✓ Loaded {len(matches_df)} matches")
+    print(f"[OK] Loaded {len(matches_df)} matches")
     
-    print("\n🔧 Engineering features...")
+    print("\nEngineering features...")
     features_df = engineer_features(matches_df, odds_df, fbref_df)
     features_df.to_csv('data/features.csv', index=False)
-    print(f"✓ Created {len(features_df)} feature records with {len(features_df.columns)} features")
+    print(f"[OK] Created {len(features_df)} feature records with {len(features_df.columns)} features")
     
-    print("\n🤖 Training models...")
+    print("\nTraining models...")
     model, scaler, features, results = train_models(features_df)
     
     return model, scaler, features, results

@@ -12,6 +12,6 @@ if __name__ == "__main__":
     if not odds_key:
         raise ValueError("ODDS_API_KEY not found in environment")
     
-    print("🚀 Starting data collection...")
+    print("Starting data collection...")
     matches_df, fbref_df = collect_all_data(api_key, odds_key, seasons=[2023, 2024, 2025])
-    print("\n✅ Data collection complete!")
+    print("\n[OK] Data collection complete!")

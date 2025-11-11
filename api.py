@@ -138,7 +138,7 @@ def get_recent_matches(team_name: str, limit: int = 5, use_espn: bool = True):
                 if matches_list:
                     return {"matches": matches_list}
         except Exception as e:
-            print(f"⚠️ ESPN scraping failed, falling back to local data: {e}")
+            print(f"[WARNING] ESPN scraping failed, falling back to local data: {e}")
     
     # Fallback to local data if ESPN fails or is disabled
     if matches_df is None:

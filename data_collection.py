@@ -25,7 +25,7 @@ class FootballDataCollector:
     def make_request(self, endpoint, params):
         """Make API request with rate limiting"""
         if self.request_count >= self.max_requests:
-            print(f"⚠️ Reached daily limit")
+            print(f"[WARNING] Reached daily limit")
             return None
             
         url = f"{self.base_url}/{endpoint}"
@@ -36,15 +36,15 @@ class FootballDataCollector:
             
             if response.status_code == 200:
                 remaining = response.headers.get('x-ratelimit-requests-remaining', '?')
-                print(f"✓ Request {self.request_count}/{self.max_requests} | Remaining: {remaining}")
+                print(f"[OK] Request {self.request_count}/{self.max_requests} | Remaining: {remaining}")
                 time.sleep(6)  # 10 req/min = 1 per 6 sec
                 return response.json()
             else:
-                print(f"✗ Error {response.status_code}")
+                print(f"[ERROR] Error {response.status_code}")
                 return None
                 
         except Exception as e:
-            print(f"✗ Exception: {str(e)}")
+            print(f"[ERROR] Exception: {str(e)}")
             return None
     
     def get_fixtures(self, league_id, season):
@@ -76,13 +76,13 @@ class OddsCollector:
             response = requests.get(url, params=params)
             if response.status_code == 200:
                 remaining = response.headers.get('x-requests-remaining', '?')
-                print(f"✓ Odds API request | Remaining: {remaining}")
+                print(f"[OK] Odds API request | Remaining: {remaining}")
                 return response.json()
             else:
-                print(f"✗ Odds API error: {response.status_code}")
+                print(f"[ERROR] Odds API error: {response.status_code}")
                 return None
         except Exception as e:
-            print(f"✗ Odds API exception: {e}")
+            print(f"[ERROR] Odds API exception: {e}")
             return None
     
     def save_historical_odds(self, output_file='data/odds_history.csv'):
@@ -135,9 +135,9 @@ class OddsCollector:
             
             os.makedirs('data', exist_ok=True)
             df.to_csv(output_file, index=False)
-            print(f"✓ Saved {len(odds_records)} odds records")
+            print(f"[OK] Saved {len(odds_records)} odds records")
         else:
-            print("⚠️ No odds records to save")
+            print("[WARNING] No odds records to save")
 
 # ESPN team ID mapping for Argentine Primera División (Liga Profesional)
 ESPN_TEAM_IDS = {
@@ -176,7 +176,7 @@ def scrape_espn_recent_matches(team_name: str, limit: int = 5):
             break
     
     if not team_id:
-        print(f"⚠️ Team ID not found for {team_name}, trying fallback URL")
+        print(f"[WARNING] Team ID not found for {team_name}, trying fallback URL")
         return None
     
     # Use the correct URL format for Liga Profesional (ARG.1)
@@ -191,7 +191,7 @@ def scrape_espn_recent_matches(team_name: str, limit: int = 5):
         time.sleep(2)  # Be respectful
         
         if response.status_code != 200:
-            print(f"⚠️ ESPN request failed for {team_name}: {response.status_code}")
+            print(f"[WARNING] ESPN request failed for {team_name}: {response.status_code}")
             return None
         
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -357,14 +357,14 @@ def scrape_espn_recent_matches(team_name: str, limit: int = 5):
                 continue
         
         if matches:
-            print(f"✓ Scraped {len(matches)} recent matches from ESPN for {team_name}")
+            print(f"[OK] Scraped {len(matches)} recent matches from ESPN for {team_name}")
             return matches
         else:
-            print(f"⚠️ No matches found on ESPN for {team_name}")
+            print(f"[WARNING] No matches found on ESPN for {team_name}")
             return None
             
     except Exception as e:
-        print(f"✗ ESPN scraping error for {team_name}: {e}")
+        print(f"[ERROR] ESPN scraping error for {team_name}: {e}")
         return None
 
 def scrape_fbref_stats():
@@ -377,14 +377,14 @@ def scrape_fbref_stats():
         time.sleep(3)
         
         if response.status_code != 200:
-            print("⚠️ FBref request failed")
+            print("[WARNING] FBref request failed")
             return None
         
         # Parse tables
         tables = pd.read_html(response.content)
         
         if not tables:
-            print("⚠️ No tables found")
+            print("[WARNING] No tables found")
             return None
         
         # Main stats table (usually first)
@@ -425,12 +425,12 @@ def scrape_fbref_stats():
         
         os.makedirs('data', exist_ok=True)
         stats_df.to_csv('data/fbref_stats.csv', index=False)
-        print(f"✓ Scraped stats for {len(stats_df)} teams from FBref")
+        print(f"[OK] Scraped stats for {len(stats_df)} teams from FBref")
         
         return stats_df
         
     except Exception as e:
-        print(f"✗ FBref scraping error: {e}")
+        print(f"[ERROR] FBref scraping error: {e}")
         return None
 
 def collect_all_data(api_key, odds_api_key, seasons=[2023, 2024]):
@@ -442,7 +442,7 @@ def collect_all_data(api_key, odds_api_key, seasons=[2023, 2024]):
     all_fixtures = []
     
     for season in seasons:
-        print(f"\n📊 Collecting season {season}...")
+        print(f"\nCollecting season {season}...")
         data = collector.get_fixtures(LEAGUE_ID, season)
         if data and 'response' in data:
             all_fixtures.extend(data['response'])
@@ -479,19 +479,19 @@ def collect_all_data(api_key, odds_api_key, seasons=[2023, 2024]):
     matches_df = matches_df.sort_values('date').reset_index(drop=True)
     
     # Collect betting odds
-    print("\n💰 Collecting betting odds...")
+    print("\nCollecting betting odds...")
     odds_collector = OddsCollector(odds_api_key)
     odds_collector.save_historical_odds()
     
     # Scrape FBref stats
-    print("\n📈 Scraping FBref advanced stats...")
+    print("\nScraping FBref advanced stats...")
     fbref_stats = scrape_fbref_stats()
     
     # Save everything
     os.makedirs('data', exist_ok=True)
     matches_df.to_csv('data/matches.csv', index=False)
     
-    print(f"\n✓ Collected {len(matches_df)} matches")
-    print(f"✓ Data saved to data/")
+    print(f"\n[OK] Collected {len(matches_df)} matches")
+    print(f"[OK] Data saved to data/")
     
     return matches_df, fbref_stats
