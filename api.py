@@ -11,15 +11,18 @@ from data_collection import scrape_espn_recent_matches
 app = FastAPI(title="Football Match Predictor API")
 
 # CORS Configuration
-# Allow specific origins from environment variable, or default to all for development
+# Allow specific origins from environment variable, or use production defaults
 cors_origins_env = os.getenv("CORS_ORIGINS", "")
 if cors_origins_env:
     # Split comma-separated origins from environment variable
     cors_origins: List[str] = [origin.strip() for origin in cors_origins_env.split(",")]
 else:
-    # Default: allow all origins (for development)
-    # Use "*" alone - FastAPI will allow all origins
-    cors_origins = ["*"]
+    # Default: production frontend and local development
+    cors_origins = [
+        "https://perezrodri.vercel.app",  # Production frontend
+        "http://localhost:3000",  # Local development
+        "http://localhost:3001",  # Alternative local port
+    ]
 
 app.add_middleware(
     CORSMiddleware,
