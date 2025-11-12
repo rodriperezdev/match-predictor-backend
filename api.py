@@ -14,10 +14,8 @@ app = FastAPI(title="Football Match Predictor API")
 # Allow specific origins from environment variable, or use production defaults
 cors_origins_env = os.getenv("CORS_ORIGINS", "")
 if cors_origins_env:
-    # Split comma-separated origins from environment variable
     cors_origins: List[str] = [origin.strip() for origin in cors_origins_env.split(",")]
 else:
-    # Default: production frontend and local development
     cors_origins = [
         "https://perezrodri.vercel.app",  # Production frontend
         "http://localhost:3000",  # Local development
