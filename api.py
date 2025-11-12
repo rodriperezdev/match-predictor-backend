@@ -3,16 +3,27 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pickle
 import pandas as pd
-from typing import Dict
+from typing import Dict, List
+import os
 from model_training import calculate_base_features
 from data_collection import scrape_espn_recent_matches
 
 app = FastAPI(title="Football Match Predictor API")
 
-# CORS
+# CORS Configuration
+# Allow specific origins from environment variable, or default to all for development
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
+if cors_origins_env:
+    # Split comma-separated origins from environment variable
+    cors_origins: List[str] = [origin.strip() for origin in cors_origins_env.split(",")]
+else:
+    # Default: allow all origins (for development)
+    # Use "*" alone - FastAPI will allow all origins
+    cors_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
