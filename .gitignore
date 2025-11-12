@@ -21,13 +21,7 @@ ENV/
 *.swp
 *.swo
 
-# Data files (too large for git)
-data/*.csv
-data/*.db
-!data/.gitkeep
 
-# Trained models (can be regenerated)
-models/*.pkl
 
 # OS
 .DS_Store
