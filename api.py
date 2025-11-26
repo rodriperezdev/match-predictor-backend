@@ -71,6 +71,10 @@ def calculate_features(home_team, away_team):
 def root():
     return {"message": "Football Match Predictor API", "status": "running"}
 
+@app.head("/")
+def root_head():
+    return {}
+
 @app.get("/teams")
 def get_teams():
     """Get list of all teams"""
